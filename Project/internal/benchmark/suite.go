@@ -15,7 +15,6 @@ const (
 	TraceSequential TraceKind = "sequential"
 	TraceConflict   TraceKind = "conflict"
 	TraceMixed      TraceKind = "mixed"
-	TraceWriteback  TraceKind = "writeback"
 )
 
 // SuiteConfig contains the architectural information needed to construct
@@ -29,15 +28,18 @@ type SuiteConfig struct {
 	VictimEntries   int
 	NumberOfBlocks  int
 	Repetitions     int
+	SequentialWords int
+	WordSizeBytes   uint64
 	AccessSizeBytes uint64
 }
 
 // Scenario is one named workload in the complete test bench.
 type Scenario struct {
-	Kind        TraceKind
-	Name        string
-	Description string
-	Requests    []model.Request
+	Kind           TraceKind
+	Name           string
+	Description    string
+	BlockSizeBytes uint64
+	Requests       []model.Request
 }
 
 func AllTraceKinds() []TraceKind {
@@ -46,7 +48,6 @@ func AllTraceKinds() []TraceKind {
 		TraceSequential,
 		TraceConflict,
 		TraceMixed,
-		TraceWriteback,
 	}
 }
 
@@ -57,7 +58,7 @@ func ParseTraceKind(value string) (TraceKind, error) {
 			return kind, nil
 		}
 	}
-	return "", fmt.Errorf("unsupported trace %q; expected repeated, sequential, conflict, mixed, writeback, or all", value)
+	return "", fmt.Errorf("unsupported trace %q; expected repeated, sequential, conflict, mixed, or all", value)
 }
 
 // GenerateSuite creates all workloads used by the final project evaluation.
@@ -81,14 +82,15 @@ func GenerateScenario(kind TraceKind, cfg SuiteConfig) (Scenario, error) {
 
 	var scenario Scenario
 	scenario.Kind = kind
+	scenario.BlockSizeBytes = cfg.BlockSizeBytes
 	switch kind {
 	case TraceRepeated:
 		scenario.Name = "Repeated locality"
 		scenario.Description = "Repeats one address so the first access misses and all later accesses hit in L1."
 		scenario.Requests = generateRepeatedTrace(cfg)
 	case TraceSequential:
-		scenario.Name = "Sequential working set"
-		scenario.Description = "Walks a small contiguous working set repeatedly; after warm-up, the blocks should remain in L1."
+		scenario.Name = "Sequential word stream"
+		scenario.Description = "Reads consecutive words one by one so each cache-line fill is followed by spatial-locality hits within that block."
 		scenario.Requests = generateSequentialTrace(cfg)
 	case TraceConflict:
 		scenario.Name = "L1 conflict thrashing"
@@ -102,12 +104,8 @@ func GenerateScenario(kind TraceKind, cfg SuiteConfig) (Scenario, error) {
 		})
 	case TraceMixed:
 		scenario.Name = "Mixed hierarchy coverage"
-		scenario.Description = "Combines an L1-hot phase, a victim-cache-sized conflict phase, and an oversized conflict phase that reaches L2 and memory."
+		scenario.Description = "Uses deterministic locality, Victim reuse, and a long policy-stress phase that makes FIFO and LRU diverge measurably."
 		scenario.Requests = generateMixedTrace(cfg)
-	case TraceWriteback:
-		scenario.Name = "Dirty writeback pressure"
-		scenario.Description = "Writes more blocks than one L2 set can hold, forcing dirty evictions and memory writebacks."
-		scenario.Requests = generateWritebackTrace(cfg)
 	default:
 		return Scenario{}, fmt.Errorf("unsupported trace kind %q", kind)
 	}
@@ -134,6 +132,18 @@ func validateSuiteConfig(cfg SuiteConfig) error {
 	if cfg.Repetitions <= 0 {
 		return fmt.Errorf("repetitions must be greater than zero")
 	}
+	if cfg.SequentialWords <= 0 {
+		return fmt.Errorf("sequential word count must be greater than zero")
+	}
+	if cfg.WordSizeBytes == 0 || cfg.WordSizeBytes > cfg.BlockSizeBytes {
+		return fmt.Errorf("word size must be between 1 and the block size")
+	}
+	if cfg.BlockSizeBytes%cfg.WordSizeBytes != 0 {
+		return fmt.Errorf("block size must be divisible by word size")
+	}
+	if cfg.BaseAddress%cfg.WordSizeBytes != 0 {
+		return fmt.Errorf("base address must be aligned to the word size")
+	}
 	if cfg.AccessSizeBytes == 0 || cfg.AccessSizeBytes > cfg.BlockSizeBytes {
 		return fmt.Errorf("access size must be between 1 and the block size")
 	}
@@ -153,65 +163,98 @@ func generateRepeatedTrace(cfg SuiteConfig) []model.Request {
 }
 
 func generateSequentialTrace(cfg SuiteConfig) []model.Request {
-	requests := make([]model.Request, 0, cfg.NumberOfBlocks*cfg.Repetitions)
-	for repetition := 0; repetition < cfg.Repetitions; repetition++ {
-		for block := 0; block < cfg.NumberOfBlocks; block++ {
-			address := cfg.BaseAddress + uint64(block)*cfg.BlockSizeBytes
-			requests = appendRequest(requests, address, model.Read, cfg.AccessSizeBytes)
-		}
+	requests := make([]model.Request, 0, cfg.SequentialWords)
+	for word := 0; word < cfg.SequentialWords; word++ {
+		address := cfg.BaseAddress + uint64(word)*cfg.WordSizeBytes
+		requests = appendRequest(requests, address, model.Read, cfg.WordSizeBytes)
 	}
 	return requests
 }
 
 func generateMixedTrace(cfg SuiteConfig) []model.Request {
-	requests := make([]model.Request, 0)
+	requests := make([]model.Request, 0, 1400)
 
-	// Phase 1: keep one line hot to produce unambiguous L1 hits.
-	hotAddress := cfg.BaseAddress + cfg.BlockSizeBytes
-	hotAccesses := maxInt(4, cfg.Repetitions)
-	for i := 0; i < hotAccesses; i++ {
-		requests = appendRequest(requests, hotAddress, model.Read, cfg.AccessSizeBytes)
+	// The mixed trace is intentionally deterministic. It contains three
+	// disjoint regions so that each region has one clear purpose and cannot
+	// accidentally inherit L1 hits from another region.
+
+	// Phase 1 — long FIFO/LRU policy stress.
+	//
+	// A0..A8 occupy nine different L1 indices. A0..A3 are repeatedly touched,
+	// making them the most recently used blocks. B0..B8 then conflict with the
+	// corresponding A blocks and push A0..A7 into the eight-entry Victim Cache.
+	// Inserting A8 overflows the Victim Cache:
+	//   * FIFO evicts A0 because A0 entered first.
+	//   * LRU evicts one of the cold A4..A7 blocks because A0..A3 were touched.
+	// Probing A0..A3 therefore creates four L2 hits under FIFO but four Victim
+	// hits under LRU. Repeating this complete epoch many times amplifies the
+	// policy difference while keeping the address sequence reproducible.
+	const (
+		policyIterations = 32
+		hotBlocks        = 4
+		hotRounds        = 4
+	)
+	policyBaseBlock := uint64(16) // L1 indices 16..24; disjoint from phases 2/3.
+	for iteration := 0; iteration < policyIterations; iteration++ {
+		// Load A0..A8 into nine distinct L1 lines.
+		for block := 0; block < cfg.VictimEntries+1; block++ {
+			address := (policyBaseBlock + uint64(block)) * cfg.BlockSizeBytes
+			requests = appendRequest(requests, address, model.Read, cfg.AccessSizeBytes)
+		}
+
+		// Refresh A0..A3. Their L1 recency must be newer than the cold A4..A7
+		// blocks before all A blocks are evicted into the Victim Cache.
+		for round := 0; round < hotRounds; round++ {
+			for block := 0; block < hotBlocks; block++ {
+				address := (policyBaseBlock + uint64(block)) * cfg.BlockSizeBytes
+				requests = appendRequest(requests, address, model.Read, cfg.AccessSizeBytes)
+			}
+		}
+
+		// B_i is exactly one L1 capacity away from A_i, so B_i and A_i map
+		// to the same direct-mapped L1 line. B0..B7 fill the Victim Cache;
+		// B8 inserts A8 and triggers one replacement decision.
+		for block := 0; block < cfg.VictimEntries+1; block++ {
+			blockAddress := policyBaseBlock + uint64(block)
+			address := blockAddress*cfg.BlockSizeBytes + cfg.L1SizeBytes
+			requests = appendRequest(requests, address, model.Read, cfg.AccessSizeBytes)
+		}
+
+		// These four probes are the policy discriminator. FIFO has already
+		// discarded them in insertion order; LRU retained them because they
+		// were the most recently used A blocks.
+		for block := 0; block < hotBlocks; block++ {
+			address := (policyBaseBlock + uint64(block)) * cfg.BlockSizeBytes
+			requests = appendRequest(requests, address, model.Read, cfg.AccessSizeBytes)
+		}
 	}
 
-	// Phase 2: use a conflict set that fits in L1 + Victim Cache. After the
-	// first round, requests should be recovered from the Victim Cache.
+	// Phase 2 — explicit L1 locality, on L1 index 1.
+	// The first request misses and the next 31 requests hit in L1.
+	const localityAccesses = 32
+	localityAddress := cfg.BaseAddress + cfg.BlockSizeBytes
+	for i := 0; i < localityAccesses; i++ {
+		requests = appendRequest(requests, localityAddress, model.Read, cfg.AccessSizeBytes)
+	}
+
+	// Phase 3 — policy-independent Victim reuse, on L1 index 2.
+	// Four conflicting blocks fit in one L1 line plus the Victim Cache. This
+	// guarantees that FIFO also records many Victim hits; the mixed benchmark
+	// does not make FIFO look inactive, it only demonstrates that LRU performs
+	// better under the policy-stress region above.
 	smallConflictBlocks := maxInt(2, cfg.NumberOfBlocks)
 	if cfg.VictimEntries > 0 && smallConflictBlocks > cfg.VictimEntries+1 {
 		smallConflictBlocks = cfg.VictimEntries + 1
 	}
+	const victimReusePasses = 16
 	smallConflictBase := cfg.BaseAddress + 2*cfg.BlockSizeBytes
-	for repetition := 0; repetition < 2; repetition++ {
+	for repetition := 0; repetition < victimReusePasses; repetition++ {
 		for block := 0; block < smallConflictBlocks; block++ {
 			address := smallConflictBase + uint64(block)*cfg.L1SizeBytes
 			requests = appendRequest(requests, address, model.Read, cfg.AccessSizeBytes)
 		}
 	}
 
-	// Phase 3: exceed the combined L1 + Victim capacity at one L1 index.
-	// The second round must therefore reach L2 for at least some requests.
-	largeConflictBlocks := maxInt(cfg.NumberOfBlocks+2, cfg.VictimEntries+2)
-	largeConflictBase := cfg.BaseAddress + 3*cfg.BlockSizeBytes
-	for repetition := 0; repetition < 2; repetition++ {
-		for block := 0; block < largeConflictBlocks; block++ {
-			address := largeConflictBase + uint64(block)*cfg.L1SizeBytes
-			requests = appendRequest(requests, address, model.Read, cfg.AccessSizeBytes)
-		}
-	}
-
-	return requests
-}
-
-func generateWritebackTrace(cfg SuiteConfig) []model.Request {
-	// Number of sets * block size is the byte stride that maps addresses to
-	// the same L2 set. Writing associativity+2 blocks guarantees L2 eviction.
-	l2SetSpanBytes := cfg.L2SizeBytes / uint64(cfg.L2Associativity)
-	blockCount := cfg.L2Associativity + 2
-	base := cfg.BaseAddress + 4*cfg.BlockSizeBytes
-	requests := make([]model.Request, 0, blockCount)
-	for block := 0; block < blockCount; block++ {
-		address := base + uint64(block)*l2SetSpanBytes
-		requests = appendRequest(requests, address, model.Write, cfg.AccessSizeBytes)
-	}
 	return requests
 }
 

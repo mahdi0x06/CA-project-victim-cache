@@ -62,6 +62,27 @@ func TestVictimLRUEvictsLeastRecentlyUsed(t *testing.T) {
 	}
 }
 
+func TestVictimLRUPreservesRecencyFromL1Eviction(t *testing.T) {
+	cfg := victimConfig(2, config.ReplacementLRU)
+	cache := NewVictim(cfg)
+
+	// Block 10 enters first but was used much more recently while resident in
+	// L1. Block 20 enters later but carries an older L1 LastUsed timestamp.
+	recent := model.NewBlock(10)
+	recent.LastUsed = 100
+	stale := model.NewBlock(20)
+	stale.LastUsed = 10
+	cache.Insert(recent)
+	cache.Insert(stale)
+
+	incoming := model.NewBlock(30)
+	incoming.LastUsed = 200
+	evicted := cache.Insert(incoming)
+	if evicted == nil || evicted.Address != 20 {
+		t.Fatalf("LRU should preserve recently used block 10 and evict stale block 20, got %+v", evicted)
+	}
+}
+
 func TestVictimRemove(t *testing.T) {
 	cfg := victimConfig(2, config.ReplacementFIFO)
 	cache := NewVictim(cfg)

@@ -199,10 +199,16 @@ func validateBehavior(results []Result) []Check {
 		if result.Architecture.Topology == config.TopologyMemoryOnly {
 			continue
 		}
+		touchedBlocks := make(map[uint64]struct{})
+		for _, request := range result.Scenario.Requests {
+			touchedBlocks[request.Address/result.Scenario.BlockSizeBytes] = struct{}{}
+		}
+		expectedMisses := uint64(len(touchedBlocks))
+		expectedHits := uint64(len(result.Scenario.Requests)) - expectedMisses
 		checks = append(checks, newCheck(
-			fmt.Sprintf("sequential/%s produces L1 reuse", result.Architecture.Name),
-			result.Stats.L1Hits > 0 && result.Stats.L1Misses > 0,
-			fmt.Sprintf("L1=%d hits/%d misses", result.Stats.L1Hits, result.Stats.L1Misses),
+			fmt.Sprintf("sequential/%s follows word-level spatial locality", result.Architecture.Name),
+			result.Stats.L1Hits == expectedHits && result.Stats.L1Misses == expectedMisses,
+			fmt.Sprintf("L1=%d hits/%d misses, expected=%d/%d", result.Stats.L1Hits, result.Stats.L1Misses, expectedHits, expectedMisses),
 		))
 	}
 
@@ -234,18 +240,20 @@ func validateBehavior(results []Result) []Check {
 		))
 	}
 
-	for _, result := range resultsForTrace(results, benchmark.TraceWriteback) {
-		if result.Architecture.Topology == config.TopologyMemoryOnly {
-			continue
-		}
-		if result.Architecture.Topology == config.TopologyL1 {
-			checks = append(checks, newCheck("writeback/l1 writes dirty evictions", result.Stats.MemoryAccesses > result.Stats.TotalRequests,
-				fmt.Sprintf("memory accesses=%d requests=%d", result.Stats.MemoryAccesses, result.Stats.TotalRequests)))
-		}
-		if result.Architecture.Topology == config.TopologyL1L2 || result.Architecture.Topology == config.TopologyFull {
-			checks = append(checks, newCheck("writeback/"+result.Architecture.Name+" exercises L2 writeback", result.Stats.L2WriteRequests > 0,
-				fmt.Sprintf("L2 writes=%d", result.Stats.L2WriteRequests)))
-		}
+	fifo, fifoFound := findResult(results, benchmark.TraceMixed, "full-fifo")
+	lru, lruFound := findResult(results, benchmark.TraceMixed, "full-lru")
+	if fifoFound && lruFound {
+		checks = append(checks,
+			newCheck("mixed LRU improves Victim hits",
+				lru.Stats.VictimHits > fifo.Stats.VictimHits,
+				fmt.Sprintf("LRU=%d FIFO=%d", lru.Stats.VictimHits, fifo.Stats.VictimHits)),
+			newCheck("mixed LRU reduces L2 reads",
+				lru.Stats.L2ReadRequests < fifo.Stats.L2ReadRequests,
+				fmt.Sprintf("LRU=%d FIFO=%d", lru.Stats.L2ReadRequests, fifo.Stats.L2ReadRequests)),
+			newCheck("mixed LRU reduces cycles",
+				lru.Stats.TotalCycles < fifo.Stats.TotalCycles,
+				fmt.Sprintf("LRU=%d FIFO=%d", lru.Stats.TotalCycles, fifo.Stats.TotalCycles)),
+		)
 	}
 
 	return checks

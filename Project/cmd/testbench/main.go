@@ -12,9 +12,11 @@ import (
 )
 
 func main() {
-	traceFlag := flag.String("trace", "all", "all|repeated|sequential|conflict|mixed|writeback")
+	traceFlag := flag.String("trace", "all", "all|repeated|sequential|conflict|mixed")
 	blocks := flag.Int("blocks", 4, "working-set/conflicting block count")
 	repetitions := flag.Int("repetitions", 8, "workload repetitions")
+	sequentialWords := flag.Int("sequential-words", 32, "number of consecutive words in the sequential trace")
+	wordSize := flag.Uint64("word-size", 4, "word size in bytes for the sequential trace")
 	policy := flag.String("victim-policy", benchrunner.PolicyBoth, "FIFO|LRU|BOTH")
 	csvPath := flag.String("csv", "", "optional CSV output path")
 	strict := flag.Bool("strict", true, "exit with status 1 if a validation check fails")
@@ -31,6 +33,8 @@ func main() {
 		VictimEntries:   base.VictimEntries,
 		NumberOfBlocks:  *blocks,
 		Repetitions:     *repetitions,
+		SequentialWords: *sequentialWords,
+		WordSizeBytes:   *wordSize,
 		AccessSizeBytes: 8,
 	}
 

@@ -27,7 +27,7 @@ func PrintReport(w io.Writer, results []Result, checks []Check, verboseChecks bo
 		fmt.Fprintf(w, "TRACE: %s — %s\n", kind, traceResults[0].Scenario.Name)
 		fmt.Fprintf(w, "%s\n", traceResults[0].Scenario.Description)
 		fmt.Fprintf(w, "%-11s %6s %8s %7s %13s %8s %13s %8s %13s %8s %6s %6s %6s\n",
-			"ARCH", "REQ", "CYCLES", "AVG", "L1 H/M", "L1 HR", "VC H/M", "VC HR", "L2 H/M", "L2 HR", "MEM", "L2-W", "SWAP")
+			"ARCH", "REQ", "CYCLES", "AVG", "L1 H/M", "L1 HR", "VC H/M", "VC HR", "L2 H/M", "L2 HR", "MEM", "L2-WR", "SWAP")
 		for _, result := range traceResults {
 			s := result.Stats
 			fmt.Fprintf(w, "%-11s %6d %8d %7.2f %6d/%-6d %8.4f %6d/%-6d %8.4f %6d/%-6d %8.4f %6d %6d %6d\n",

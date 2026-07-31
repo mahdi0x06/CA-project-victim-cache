@@ -12,10 +12,12 @@ import (
 
 func main() {
 	topology := flag.String("topology", config.TopologyFull, "memory|l1|l1-l2|full")
-	traceName := flag.String("trace", string(benchmark.TraceConflict), "repeated|sequential|conflict|mixed|writeback")
+	traceName := flag.String("trace", string(benchmark.TraceConflict), "repeated|sequential|conflict|mixed")
 	victim := flag.Bool("victim", true, "enable victim cache in full topology")
 	blocks := flag.Int("blocks", 4, "working-set/conflicting block count")
 	repetitions := flag.Int("repetitions", 8, "trace repetitions")
+	sequentialWords := flag.Int("sequential-words", 32, "number of consecutive words in the sequential trace")
+	wordSize := flag.Uint64("word-size", 4, "word size in bytes for the sequential trace")
 	policy := flag.String("victim-policy", config.ReplacementFIFO, "FIFO|LRU")
 	flag.Parse()
 
@@ -43,6 +45,8 @@ func main() {
 		VictimEntries:   cfg.VictimEntries,
 		NumberOfBlocks:  *blocks,
 		Repetitions:     *repetitions,
+		SequentialWords: *sequentialWords,
+		WordSizeBytes:   *wordSize,
 		AccessSizeBytes: 8,
 	})
 	if err != nil {

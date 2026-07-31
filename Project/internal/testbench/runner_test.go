@@ -16,6 +16,8 @@ func testSuiteConfig(base config.Config) benchmark.SuiteConfig {
 		VictimEntries:   base.VictimEntries,
 		NumberOfBlocks:  4,
 		Repetitions:     8,
+		SequentialWords: 32,
+		WordSizeBytes:   4,
 		AccessSizeBytes: 8,
 	}
 }
@@ -44,24 +46,116 @@ func TestCompleteSuitePassesAllChecks(t *testing.T) {
 	}
 }
 
-func TestMixedTraceExercisesEveryLevel(t *testing.T) {
+func TestSequentialWordTraceHasPredictablePerTopologyCounters(t *testing.T) {
+	base := config.Default()
+	scenario, err := benchmark.GenerateScenario(benchmark.TraceSequential, testSuiteConfig(base))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		architecture Architecture
+		wantL1Hits   uint64
+		wantL1Miss   uint64
+		wantVCMiss   uint64
+		wantL2Miss   uint64
+		wantMemory   uint64
+		wantCycles   uint64
+	}{
+		{Architecture{Name: "memory", Topology: config.TopologyMemoryOnly}, 0, 0, 0, 0, 32, 3200},
+		{Architecture{Name: "l1", Topology: config.TopologyL1}, 30, 2, 0, 0, 2, 232},
+		{Architecture{Name: "l1-l2", Topology: config.TopologyL1L2}, 30, 2, 0, 2, 2, 256},
+		{Architecture{Name: "full-fifo", Topology: config.TopologyFull, VictimEnabled: true, VictimPolicy: config.ReplacementFIFO}, 30, 2, 2, 2, 2, 260},
+		{Architecture{Name: "full-lru", Topology: config.TopologyFull, VictimEnabled: true, VictimPolicy: config.ReplacementLRU}, 30, 2, 2, 2, 2, 260},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.architecture.Name, func(t *testing.T) {
+			result, err := RunCase(base, scenario, tt.architecture)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := result.Stats
+			if got.TotalRequests != 32 ||
+				got.L1Hits != tt.wantL1Hits || got.L1Misses != tt.wantL1Miss ||
+				got.VictimHits != 0 || got.VictimMisses != tt.wantVCMiss ||
+				got.L2Hits != 0 || got.L2Misses != tt.wantL2Miss ||
+				got.MemoryAccesses != tt.wantMemory || got.TotalCycles != tt.wantCycles {
+				t.Fatalf("unexpected sequential counters: requests=%d L1=%d/%d VC=%d/%d L2=%d/%d MEM=%d cycles=%d",
+					got.TotalRequests, got.L1Hits, got.L1Misses, got.VictimHits, got.VictimMisses,
+					got.L2Hits, got.L2Misses, got.MemoryAccesses, got.TotalCycles)
+			}
+		})
+	}
+}
+
+func TestMixedTraceHasPredictablePerTopologyCounters(t *testing.T) {
 	base := config.Default()
 	scenario, err := benchmark.GenerateScenario(benchmark.TraceMixed, testSuiteConfig(base))
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := RunCase(base, scenario, Architecture{
-		Name:          "full-fifo",
-		Topology:      config.TopologyFull,
-		VictimEnabled: true,
-		VictimPolicy:  config.ReplacementFIFO,
-	})
+
+	tests := []struct {
+		architecture Architecture
+		wantL1Hits   uint64
+		wantL1Miss   uint64
+		wantVCHits   uint64
+		wantVCMiss   uint64
+		wantL2Hits   uint64
+		wantL2Miss   uint64
+		wantMemory   uint64
+		wantCycles   uint64
+	}{
+		{Architecture{Name: "memory", Topology: config.TopologyMemoryOnly}, 0, 0, 0, 0, 0, 0, 1312, 131200},
+		{Architecture{Name: "l1", Topology: config.TopologyL1}, 667, 645, 0, 0, 0, 0, 645, 65812},
+		{Architecture{Name: "l1-l2", Topology: config.TopologyL1L2}, 667, 645, 0, 0, 622, 23, 23, 11352},
+		{Architecture{Name: "full-fifo", Topology: config.TopologyFull, VictimEnabled: true, VictimPolicy: config.ReplacementFIFO}, 667, 645, 60, 585, 562, 23, 23, 11922},
+		{Architecture{Name: "full-lru", Topology: config.TopologyFull, VictimEnabled: true, VictimPolicy: config.ReplacementLRU}, 667, 645, 188, 457, 434, 23, 23, 10386},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.architecture.Name, func(t *testing.T) {
+			result, err := RunCase(base, scenario, tt.architecture)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := result.Stats
+			if got.TotalRequests != 1312 ||
+				got.L1Hits != tt.wantL1Hits || got.L1Misses != tt.wantL1Miss ||
+				got.VictimHits != tt.wantVCHits || got.VictimMisses != tt.wantVCMiss ||
+				got.L2Hits != tt.wantL2Hits || got.L2Misses != tt.wantL2Miss ||
+				got.MemoryAccesses != tt.wantMemory || got.TotalCycles != tt.wantCycles {
+				t.Fatalf("unexpected mixed counters: requests=%d L1=%d/%d VC=%d/%d L2=%d/%d MEM=%d cycles=%d",
+					got.TotalRequests, got.L1Hits, got.L1Misses, got.VictimHits, got.VictimMisses,
+					got.L2Hits, got.L2Misses, got.MemoryAccesses, got.TotalCycles)
+			}
+		})
+	}
+}
+
+func TestMixedTraceMakesLRUOutperformFIFO(t *testing.T) {
+	base := config.Default()
+	scenario, err := benchmark.GenerateScenario(benchmark.TraceMixed, testSuiteConfig(base))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Stats.L1Hits == 0 || result.Stats.VictimHits == 0 || result.Stats.L2Hits == 0 || result.Stats.MemoryAccesses == 0 {
-		t.Fatalf("mixed trace did not reach every level: L1=%d VC=%d L2=%d MEM=%d",
-			result.Stats.L1Hits, result.Stats.VictimHits, result.Stats.L2Hits, result.Stats.MemoryAccesses)
+	fifo, err := RunCase(base, scenario, Architecture{Name: "full-fifo", Topology: config.TopologyFull, VictimEnabled: true, VictimPolicy: config.ReplacementFIFO})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lru, err := RunCase(base, scenario, Architecture{Name: "full-lru", Topology: config.TopologyFull, VictimEnabled: true, VictimPolicy: config.ReplacementLRU})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lru.Stats.VictimHits <= fifo.Stats.VictimHits {
+		t.Fatalf("LRU victim hits=%d, FIFO=%d", lru.Stats.VictimHits, fifo.Stats.VictimHits)
+	}
+	if lru.Stats.L2ReadRequests >= fifo.Stats.L2ReadRequests {
+		t.Fatalf("LRU L2 reads=%d, FIFO=%d", lru.Stats.L2ReadRequests, fifo.Stats.L2ReadRequests)
+	}
+	if lru.Stats.TotalCycles >= fifo.Stats.TotalCycles {
+		t.Fatalf("LRU cycles=%d, FIFO=%d", lru.Stats.TotalCycles, fifo.Stats.TotalCycles)
 	}
 }
 
@@ -87,20 +181,5 @@ func TestConflictVictimImprovesBaseline(t *testing.T) {
 	}
 	if full.Stats.TotalCycles >= baseline.Stats.TotalCycles {
 		t.Fatalf("cycles full=%d baseline=%d", full.Stats.TotalCycles, baseline.Stats.TotalCycles)
-	}
-}
-
-func TestWritebackTraceExercisesDirtyEviction(t *testing.T) {
-	base := config.Default()
-	scenario, err := benchmark.GenerateScenario(benchmark.TraceWriteback, testSuiteConfig(base))
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err := RunCase(base, scenario, Architecture{Name: "l1-l2", Topology: config.TopologyL1L2})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.Stats.L2WriteRequests == 0 {
-		t.Fatal("expected at least one dirty L2 writeback")
 	}
 }

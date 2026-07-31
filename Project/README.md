@@ -9,28 +9,34 @@ A configurable functional reference simulator for four memory hierarchies:
 
 ## Run one topology and one workload
 
-The simulator supports five deterministic traces:
+The simulator supports four deterministic traces:
 
 - `repeated`: proves L1 warm-up and L1 hits
-- `sequential`: repeatedly scans a small working set that fits in L1
+- `sequential`: reads consecutive 4-byte words one by one, demonstrating spatial locality inside 64-byte blocks
 - `conflict`: forces direct-mapped L1 thrashing and measures Victim Cache benefit
-- `mixed`: deliberately generates L1 hits, Victim hits, L2 hits, and memory accesses in one run
-- `writeback`: generates dirty evictions and L2-to-memory writebacks
+- `mixed`: runs 1312 deterministic requests, exercises every hierarchy level, and creates a clear FIFO-versus-LRU Victim Cache difference
 
 Examples:
 
 ```bash
 go run ./cmd/sim -topology l1 -trace repeated
-go run ./cmd/sim -topology l1-l2 -trace sequential
+go run ./cmd/sim -topology l1-l2 -trace sequential -sequential-words 32 -word-size 4
 go run ./cmd/sim -topology l1-l2 -trace conflict
 go run ./cmd/sim -topology full -trace mixed -victim=true -victim-policy=FIFO
-go run ./cmd/sim -topology full -trace writeback -victim=true -victim-policy=LRU
 ```
+
+
+For the default sequential trace, the addresses are `0, 4, 8, ..., 124`.
+A 64-byte block contains sixteen 4-byte words, so 32 requests touch exactly
+two blocks and produce 30 L1 hits plus 2 L1 misses.
+
+For the default mixed trace, FIFO records 60 Victim hits and 11922 cycles, while LRU records 188 Victim hits and 10386 cycles. The workload deliberately keeps four hot blocks recent before overflowing the eight-entry Victim Cache, so LRU retains them and FIFO evicts them by arrival order.
 
 Trace controls:
 
 ```bash
 go run ./cmd/sim -topology full -trace conflict -blocks 4 -repetitions 20
+go run ./cmd/sim -topology l1-l2 -trace sequential -sequential-words 64 -word-size 4
 ```
 
 ## Complete final test bench

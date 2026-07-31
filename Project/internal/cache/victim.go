@@ -75,7 +75,13 @@ func (c *Victim) Insert(block model.Block) *model.Block {
 	// as a convenient tag.
 	block.Tag = block.Address
 	block.Inserted = c.clock
-	block.LastUsed = c.clock
+	// For a real LRU distinction, preserve the recency carried by an L1
+	// eviction. FIFO ignores this field and uses Inserted. Direct cache-level
+	// tests may insert a fresh block with no recency metadata, so fall back to
+	// the Victim Cache clock in that case.
+	if block.LastUsed == 0 {
+		block.LastUsed = c.clock
+	}
 
 	for entryIndex := range c.entries {
 		if !c.entries[entryIndex].Valid {

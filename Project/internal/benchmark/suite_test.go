@@ -17,6 +17,8 @@ func suiteTestConfig() SuiteConfig {
 		VictimEntries:   8,
 		NumberOfBlocks:  4,
 		Repetitions:     8,
+		SequentialWords: 32,
+		WordSizeBytes:   4,
 		AccessSizeBytes: 8,
 	}
 }
@@ -39,24 +41,33 @@ func TestGenerateRepeatedScenario(t *testing.T) {
 	}
 }
 
-func TestGenerateSequentialScenario(t *testing.T) {
+func TestGenerateSequentialScenarioWalksWordByWord(t *testing.T) {
 	cfg := suiteTestConfig()
 	scenario, err := GenerateScenario(TraceSequential, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantFirstRound := []uint64{0, 64, 128, 192}
-	for i, want := range wantFirstRound {
-		if scenario.Requests[i].Address != want {
-			t.Fatalf("request %d address=%d, want %d", i, scenario.Requests[i].Address, want)
+	if len(scenario.Requests) != cfg.SequentialWords {
+		t.Fatalf("requests=%d, want %d", len(scenario.Requests), cfg.SequentialWords)
+	}
+	for i, request := range scenario.Requests {
+		wantAddress := cfg.BaseAddress + uint64(i)*cfg.WordSizeBytes
+		if request.Address != wantAddress {
+			t.Fatalf("request %d address=%d, want %d", i, request.Address, wantAddress)
+		}
+		if request.Size != cfg.WordSizeBytes {
+			t.Fatalf("request %d size=%d, want word size %d", i, request.Size, cfg.WordSizeBytes)
 		}
 	}
-	if scenario.Requests[cfg.NumberOfBlocks].Address != 0 {
-		t.Fatalf("second round did not restart at base address")
+
+	// With 64-byte blocks and 4-byte words, requests 0..15 belong to
+	// block 0 and requests 16..31 belong to block 1.
+	if scenario.Requests[15].Address != 60 || scenario.Requests[16].Address != 64 {
+		t.Fatalf("unexpected block boundary: word15=%d word16=%d", scenario.Requests[15].Address, scenario.Requests[16].Address)
 	}
 }
 
-func TestGenerateMixedScenarioIsDeterministicAndReadOnly(t *testing.T) {
+func TestGenerateMixedScenarioIsDeterministicAndPolicySensitive(t *testing.T) {
 	cfg := suiteTestConfig()
 	first, err := GenerateScenario(TraceMixed, cfg)
 	if err != nil {
@@ -69,32 +80,78 @@ func TestGenerateMixedScenarioIsDeterministicAndReadOnly(t *testing.T) {
 	if !reflect.DeepEqual(first.Requests, second.Requests) {
 		t.Fatal("mixed trace is not deterministic")
 	}
-	if len(first.Requests) == 0 {
-		t.Fatal("mixed trace is empty")
+
+	// Default recipe:
+	//   32 policy epochs x 38 requests = 1216
+	//   32 explicit L1-locality requests
+	//   4 conflicting blocks x 16 Victim-reuse passes = 64
+	// Total = 1312 requests.
+	if len(first.Requests) != 1312 {
+		t.Fatalf("mixed requests=%d, want 1312", len(first.Requests))
 	}
 	for _, request := range first.Requests {
 		if request.Op != model.Read {
 			t.Fatalf("mixed trace contains non-read operation %v", request.Op)
 		}
 	}
-}
 
-func TestGenerateWritebackScenario(t *testing.T) {
-	cfg := suiteTestConfig()
-	scenario, err := GenerateScenario(TraceWriteback, cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(scenario.Requests) != cfg.L2Associativity+2 {
-		t.Fatalf("requests=%d, want %d", len(scenario.Requests), cfg.L2Associativity+2)
-	}
-	wantStride := cfg.L2SizeBytes / uint64(cfg.L2Associativity)
-	for i, request := range scenario.Requests {
-		if request.Op != model.Write {
-			t.Fatalf("request %d is not a write", i)
+	const epochLength = 38
+	for epoch := 0; epoch < 32; epoch++ {
+		offset := epoch * epochLength
+
+		// A0..A8: blocks 16..24, nine distinct L1 indices.
+		for block := 0; block < 9; block++ {
+			want := uint64(16+block) * cfg.BlockSizeBytes
+			if got := first.Requests[offset+block].Address; got != want {
+				t.Fatalf("epoch %d A%d address=%d, want %d", epoch, block, got, want)
+			}
 		}
-		if i > 0 && request.Address-scenario.Requests[i-1].Address != wantStride {
-			t.Fatalf("request spacing=%d, want %d", request.Address-scenario.Requests[i-1].Address, wantStride)
+
+		// Four rounds over hot A0..A3.
+		for round := 0; round < 4; round++ {
+			for block := 0; block < 4; block++ {
+				i := offset + 9 + round*4 + block
+				want := uint64(16+block) * cfg.BlockSizeBytes
+				if got := first.Requests[i].Address; got != want {
+					t.Fatalf("epoch %d hot round %d block %d address=%d, want %d", epoch, round, block, got, want)
+				}
+			}
+		}
+
+		// B0..B8 conflict with A0..A8 by exactly one L1 capacity.
+		for block := 0; block < 9; block++ {
+			i := offset + 25 + block
+			want := uint64(16+block)*cfg.BlockSizeBytes + cfg.L1SizeBytes
+			if got := first.Requests[i].Address; got != want {
+				t.Fatalf("epoch %d B%d address=%d, want %d", epoch, block, got, want)
+			}
+		}
+
+		// Probe hot A0..A3. These are the FIFO/LRU discriminator.
+		for block := 0; block < 4; block++ {
+			i := offset + 34 + block
+			want := uint64(16+block) * cfg.BlockSizeBytes
+			if got := first.Requests[i].Address; got != want {
+				t.Fatalf("epoch %d probe A%d address=%d, want %d", epoch, block, got, want)
+			}
+		}
+	}
+
+	// Explicit L1 phase: 32 requests to block 1.
+	for i := 1216; i < 1248; i++ {
+		if got := first.Requests[i].Address; got != cfg.BlockSizeBytes {
+			t.Fatalf("L1 locality request %d address=%d, want %d", i, got, cfg.BlockSizeBytes)
+		}
+	}
+
+	// Policy-independent Victim phase: four index-2 conflicts, 16 passes.
+	wantVictimPass := []uint64{128, 4224, 8320, 12416}
+	for pass := 0; pass < 16; pass++ {
+		for block, want := range wantVictimPass {
+			i := 1248 + pass*len(wantVictimPass) + block
+			if got := first.Requests[i].Address; got != want {
+				t.Fatalf("Victim phase request %d address=%d, want %d", i, got, want)
+			}
 		}
 	}
 }
