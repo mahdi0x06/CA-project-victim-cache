@@ -1,6 +1,7 @@
 # Victim Cache Project 6
 
-A configurable functional reference simulator for four memory hierarchies:
+An Akita-driven simulator with a deterministic functional memory-hierarchy
+core. It supports four memory hierarchies:
 
 - `memory`: CPU -> Main Memory
 - `l1`: CPU -> L1 -> Main Memory
@@ -87,6 +88,18 @@ go test -race ./...
 go vet ./...
 ```
 
-## Akita boundary
+## Akita execution
 
-The code under `internal/system` is the functional reference model. An Akita integration should keep this model as the correctness oracle and replace the synchronous adapter with Akita components, ports, messages, and scheduled events. See `AKITA_INTEGRATION.md`.
+Every user-facing command runs requests through Akita v4.9.0. The
+`internal/simadapter` package builds a serial Akita engine, a request-driver
+component, a hierarchy-executor component, typed request/response messages,
+an Akita direct connection, and one completion event per memory access.
+
+The cache behavior under `internal/system` remains the functional correctness
+oracle. Requests are issued one at a time so the existing cache state,
+statistics, reported cycles, command output, validation checks, and CSV files
+remain unchanged. Akita owns message delivery and simulated event ordering;
+the functional core owns the established hierarchy semantics.
+
+See [AKITA_INTEGRATION.md](AKITA_INTEGRATION.md) for the complete component,
+message, timing, execution, and compatibility design.

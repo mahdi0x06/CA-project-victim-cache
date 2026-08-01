@@ -33,6 +33,10 @@ func New(cfg config.Config) *System {
 }
 func (s *System) Validate() error { return s.Config.ValidateMemoryHierarchy() }
 func (s *System) ResetStats()     { s.Stats = metrics.Stats{} }
+
+// Run is the synchronous correctness oracle. User-facing commands execute the
+// same requests through simadapter's Akita components and compare against this
+// behavior in integration tests.
 func (s *System) Run(reqs []model.Request) []model.Response {
 	out := make([]model.Response, 0, len(reqs))
 	for _, r := range reqs {

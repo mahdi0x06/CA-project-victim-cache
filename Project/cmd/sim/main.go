@@ -7,6 +7,7 @@ import (
 
 	"victimcacheproject/internal/benchmark"
 	"victimcacheproject/internal/config"
+	"victimcacheproject/internal/simadapter"
 	"victimcacheproject/internal/system"
 )
 
@@ -54,7 +55,16 @@ func main() {
 		os.Exit(2)
 	}
 
-	simulator.Run(scenario.Requests)
+	adapter := simadapter.New(simulator)
+	adapter.SetRequests(scenario.Requests)
+	if err := adapter.Build(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	if err := adapter.Run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
 	stats := simulator.Stats
 	fmt.Println("Victim Cache Project 6")
 	fmt.Printf("trace=%s scenario=%q\n", scenario.Kind, scenario.Name)

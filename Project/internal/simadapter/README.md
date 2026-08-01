@@ -1,5 +1,19 @@
 # Simulation adapter
 
-`adapter.go` provides the complete synchronous reference runner used for deterministic correctness tests.
+`simadapter` is the Akita runtime boundary used by every command.
 
-For an actual Akita event-driven implementation, keep the same `System`, request model, cache policies, and metrics, but wrap them with Akita components, ports, messages, and scheduled events. Detailed steps are in the repository root file `AKITA_INTEGRATION.md`.
+It creates:
+
+- an Akita serial engine;
+- a request-driver component and port;
+- a hierarchy-executor component and port;
+- typed Akita request and response messages;
+- an Akita direct connection; and
+- scheduled access-completion events.
+
+The hierarchy executor calls the unchanged functional `System.Access` exactly
+once per request. The driver waits for that response before sending the next
+request, preserving all pre-integration results while making Akita responsible
+for request transport and event scheduling.
+
+See the repository root file `AKITA_INTEGRATION.md` for the complete design.

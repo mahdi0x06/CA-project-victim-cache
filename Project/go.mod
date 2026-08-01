@@ -1,7 +1,8 @@
 module victimcacheproject
 
-go 1.23.0
+go 1.24.0
 
-// Akita is intentionally not imported in the first scaffold step.
-// After choosing the exact Akita release/API, add it with:
-//   go get github.com/sarchlab/akita/v4@v4.9.0
+// Akita drives request delivery and event scheduling through simadapter.
+require github.com/sarchlab/akita/v4 v4.9.0
+
+require github.com/rs/xid v1.6.0 // indirect

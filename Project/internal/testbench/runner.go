@@ -8,6 +8,7 @@ import (
 	"victimcacheproject/internal/config"
 	"victimcacheproject/internal/metrics"
 	"victimcacheproject/internal/model"
+	"victimcacheproject/internal/simadapter"
 	"victimcacheproject/internal/system"
 )
 
@@ -89,12 +90,19 @@ func RunCase(base config.Config, scenario benchmark.Scenario, architecture Archi
 	if err := simulator.Validate(); err != nil {
 		return Result{}, fmt.Errorf("%s/%s: %w", scenario.Kind, architecture.Name, err)
 	}
-	responses := simulator.Run(scenario.Requests)
+	adapter := simadapter.New(simulator)
+	adapter.SetRequests(scenario.Requests)
+	if err := adapter.Build(); err != nil {
+		return Result{}, fmt.Errorf("%s/%s: %w", scenario.Kind, architecture.Name, err)
+	}
+	if err := adapter.Run(); err != nil {
+		return Result{}, fmt.Errorf("%s/%s: %w", scenario.Kind, architecture.Name, err)
+	}
 	return Result{
 		Scenario:     scenario,
 		Architecture: architecture,
 		Stats:        simulator.Stats,
-		Responses:    responses,
+		Responses:    adapter.Responses,
 	}, nil
 }
 
