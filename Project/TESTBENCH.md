@@ -94,6 +94,32 @@ Each workload runs on:
 - `full-fifo`
 - `full-lru`
 
+## Akita execution of every test case
+
+The test bench does not call the memory hierarchy directly. For every
+workload/architecture pair, `testbench.RunCase` creates a fresh `System`, then
+constructs and runs a fresh `simadapter.Adapter`. The adapter creates a new
+Akita `SerialEngine`, a `MemoryRequestDriver`, a
+`MemoryHierarchyExecutor`, their Akita ports, and a `DirectConnection`.
+
+Each request follows this real event-driven path:
+
+```text
+driver sends accessRequestMsg
+  -> Akita DirectConnection delivers it
+  -> hierarchy executor calls System.Access exactly once
+  -> executor schedules completeAccessEvent after LatencyCycles
+  -> event sends accessResponseMsg
+  -> driver validates both Akita correlation ID and project RequestID
+  -> driver records the response and issues the next request
+```
+
+Only one request is outstanding. This makes all 20 matrix runs deterministic
+and preserves the cache-state order, counters, cycle totals, report formatting,
+and CSV schema established before the Akita integration. The cache levels are
+functional objects inside `System.Access`, not independent Akita components;
+Akita is responsible for orchestration, transport, and completion timing.
+
 ## Automatic validation
 
 The test bench checks:
@@ -109,6 +135,10 @@ The test bench checks:
 - exact default sequential result: 30 L1 hits and 2 L1 misses
 - conflict-trace Victim Cache benefit
 - mixed-trace coverage of every level
+
+In addition, `internal/simadapter/adapter_test.go` executes all four workloads
+on all five architectures through Akita and compares every response and every
+statistics field with the synchronous `System.Run` correctness oracle.
 
 The sequential parameters can be changed independently of the conflict-trace
 parameters:
@@ -138,3 +168,6 @@ go run ./cmd/testbench -csv results.csv
 The CSV contains per-workload, per-architecture values for cycles, average
 cycles per request, all hit/miss counters and rates, Victim swaps, L2 reads and
 read/write request counters, and memory accesses.
+
+CSV rows therefore describe simulations that completed through the Akita
+engine. No alternate direct-run path is used by `cmd/testbench`.

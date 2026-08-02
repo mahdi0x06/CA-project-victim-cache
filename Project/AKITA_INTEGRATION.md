@@ -47,6 +47,22 @@ The implementation lives in `internal/simadapter`:
 - `messages.go` defines the typed Akita request and response messages.
 - `adapter_test.go` compares Akita execution with the functional oracle.
 
+The user-facing call hierarchy is:
+
+```text
+cmd/sim.main
+  -> simadapter.New -> SetRequests -> Build -> Run
+
+cmd/testbench.main or cmd/compare.main
+  -> testbench.RunSuite -> RunCase
+  -> simadapter.New -> SetRequests -> Build -> Run
+```
+
+`Build` validates the functional hierarchy. `Run` creates the fresh Akita
+engine, components, ports, and direct connection, executes the event queue, and
+copies the completed responses. Therefore every reported CLI and CSV result is
+produced after successful Akita-engine execution.
+
 ## Akita capabilities used
 
 ### Serial engine
@@ -113,6 +129,12 @@ completionTime := frequency.NCyclesLater(
 It then schedules a `completeAccessEvent`. The response is not placed on the
 Akita port until that event runs.
 
+`System.Access` performs its functional state transition synchronously when the
+Akita request arrives. Akita models the externally observable completion time:
+the driver cannot receive the response or issue the next request before the
+completion event. This is the compatibility model used by the project, not a
+claim that every internal cache operation is a separate event.
+
 ## Why the functional System remains intact
 
 The cache package has extensive deterministic tests for:
@@ -129,6 +151,13 @@ Replacing those algorithms while adding Akita would combine two independent
 changes and risk changing the project results. Instead, each Akita request
 invokes `System.Access` exactly once. Akita controls when requests and
 responses move; `System` controls what the memory hierarchy does.
+
+The only runtime messages in the current adapter are `accessRequestMsg` and
+`accessResponseMsg`. L1 lookup, Victim lookup/swap, L2 lookup, block fill, and
+eviction forwarding are ordinary function calls within `System.Access`. The
+state-machine and sequence diagrams in the report describe these logical
+internal operations; they must not be interpreted as separate network messages
+between independent Akita cache components.
 
 `System.Run` remains available as the synchronous correctness oracle. It is
 used by integration tests to prove that the Akita path returns identical

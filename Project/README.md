@@ -8,6 +8,23 @@ core. It supports four memory hierarchies:
 - `l1-l2`: CPU -> L1 -> L2 -> Main Memory
 - `full`: CPU -> L1 -> Victim Cache -> L2 -> Main Memory
 
+All normal CLI commands use the Akita execution path. There is no separate
+"Akita mode": `cmd/sim` creates the adapter directly, while `cmd/testbench` and
+`cmd/compare` reach it through `testbench.RunCase`.
+
+The runtime call path is:
+
+```text
+benchmark requests
+  -> MemoryRequestDriver (Akita component)
+  -> accessRequestMsg through an Akita port and DirectConnection
+  -> MemoryHierarchyExecutor (Akita component)
+  -> System.Access exactly once
+  -> completeAccessEvent scheduled after the calculated service latency
+  -> accessResponseMsg through the Akita connection
+  -> MemoryRequestDriver responses and project reports
+```
+
 ## Run one topology and one workload
 
 The simulator supports four deterministic traces:
@@ -100,6 +117,19 @@ oracle. Requests are issued one at a time so the existing cache state,
 statistics, reported cycles, command output, validation checks, and CSV files
 remain unchanged. Akita owns message delivery and simulated event ordering;
 the functional core owns the established hierarchy semantics.
+
+The current integration uses two Akita components around the complete
+functional hierarchy. L1, Victim Cache, L2, and Main Memory are concrete cache
+objects called inside `System.Access`; they are not yet separate concurrent
+Akita components. Consequently, `accessRequestMsg` and `accessResponseMsg` are
+real Akita messages, while lookup, insertion, eviction, and swap are synchronous
+functional operations inside the hierarchy executor. The response becomes
+visible to the driver only when Akita executes the scheduled completion event.
+
+At 1 GHz the executor converts `Response.LatencyCycles` to Akita time with
+`Freq.NCyclesLater`. The printed `TotalCycles` remains the sum of established
+cache-service latencies and intentionally excludes internal connection ticks,
+preserving all previous CLI and CSV results.
 
 See [AKITA_INTEGRATION.md](AKITA_INTEGRATION.md) for the complete component,
 message, timing, execution, and compatibility design.
