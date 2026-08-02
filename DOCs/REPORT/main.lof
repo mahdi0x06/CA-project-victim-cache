@@ -2,8 +2,8 @@
 \contentsline {figure}{\numberline {2}{\ignorespaces ماشین حالت پردازش درخواست در معماری کامل دارای حافظه قربانی}}{8}{figure.2}%
 \contentsline {figure}{\numberline {3}{\ignorespaces توالی منطقی عملیات \lr {System.Access} در معماری پایه برای مسیر عدم اصابت تا حافظه اصلی}}{9}{figure.3}%
 \contentsline {figure}{\numberline {4}{\ignorespaces توالی منطقی و اتمیک جابه‌جایی میان \lr {L1} و حافظه قربانی داخل \lr {System.Access}}}{10}{figure.4}%
-\contentsline {figure}{\numberline {5}{\ignorespaces مقایسه میانگین چرخه هر درخواست در چهار برنامه محک}}{22}{figure.5}%
-\contentsline {figure}{\numberline {6}{\ignorespaces کاهش ترافیک خواندن \lr {L2} نسبت به توپولوژی پایه \lr {l1-l2}}}{22}{figure.6}%
-\contentsline {figure}{\numberline {7}{\ignorespaces نرخ اصابت حافظه قربانی در سیاست‌های \lr {FIFO} و \lr {LRU}}}{23}{figure.7}%
-\contentsline {figure}{\numberline {8}{\ignorespaces چرخه کل هر معماری نسبت به \lr {l1-l2}}}{23}{figure.8}%
-\contentsline {figure}{\numberline {9}{\ignorespaces مقایسه مستقیم \lr {FIFO} و \lr {LRU} در رد \lr {mixed}}}{24}{figure.9}%
+\contentsline {figure}{\numberline {5}{\ignorespaces مقایسه میانگین چرخه هر درخواست در چهار برنامه محک}}{20}{figure.5}%
+\contentsline {figure}{\numberline {6}{\ignorespaces کاهش ترافیک خواندن \lr {L2} نسبت به توپولوژی پایه \lr {l1-l2}}}{20}{figure.6}%
+\contentsline {figure}{\numberline {7}{\ignorespaces نرخ اصابت حافظه قربانی در سیاست‌های \lr {FIFO} و \lr {LRU}}}{21}{figure.7}%
+\contentsline {figure}{\numberline {8}{\ignorespaces چرخه کل هر معماری نسبت به \lr {l1-l2}}}{21}{figure.8}%
+\contentsline {figure}{\numberline {9}{\ignorespaces مقایسه مستقیم \lr {FIFO} و \lr {LRU} در الگوی \lr {mixed}}}{22}{figure.9}%

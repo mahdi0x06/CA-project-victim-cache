@@ -2,36 +2,35 @@
 \contentsline {subsection}{\numberline {1.1}مسئله نقص برخورد}{4}{subsection.1.1}%
 \contentsline {subsection}{\numberline {1.2}راه‌حل حافظه نهان قربانی}{5}{subsection.1.2}%
 \contentsline {subsection}{\numberline {1.3}دامنه ارزیابی}{5}{subsection.1.3}%
-\contentsline {section}{\numberline {2}طراحی معماری و اجرای رویدادمحور با آکیتا}{6}{section.2}%
-\contentsline {subsection}{\numberline {2.1}پیکربندی سلسله‌مراتب حافظه}{6}{subsection.2.1}%
+\contentsline {section}{\numberline {2}طراحی معماری و اجرای رویدادمحور با آکیتا}{5}{section.2}%
+\contentsline {subsection}{\numberline {2.1}پیکربندی سلسله‌مراتب حافظه}{5}{subsection.2.1}%
 \contentsline {subsection}{\numberline {2.2}ساختارهای داده اصلی}{6}{subsection.2.2}%
-\contentsline {subsection}{\numberline {2.3}ماشین حالت معماری پایه}{7}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.3}ماشین حالت معماری پایه}{6}{subsection.2.3}%
 \contentsline {subsection}{\numberline {2.4}ماشین حالت معماری دارای حافظه قربانی}{7}{subsection.2.4}%
 \contentsline {subsection}{\numberline {2.5}توالی منطقی عملیات داخلی سلسله‌مراتب}{9}{subsection.2.5}%
 \contentsline {subsection}{\numberline {2.6}مدیریت جابه‌جایی بدون بن‌بست}{10}{subsection.2.6}%
-\contentsline {subsection}{\numberline {2.7}پیاده‌سازی فعلی آکیتا و مرز مسئولیت‌ها}{11}{subsection.2.7}%
-\contentsline {section}{\numberline {3}بخش‌های اصلی کد}{12}{section.3}%
-\contentsline {subsection}{\numberline {3.1}پیکربندی و اعتبارسنجی}{12}{subsection.3.1}%
-\contentsline {subsection}{\numberline {3.2}حافظه نهان مستقیم‌نگاشت سطح اول}{13}{subsection.3.2}%
-\contentsline {subsection}{\numberline {3.3}حافظه قربانی و سیاست‌های جایگزینی}{14}{subsection.3.3}%
-\contentsline {subsection}{\numberline {3.4}حافظه نهان سطح دوم}{14}{subsection.3.4}%
-\contentsline {subsection}{\numberline {3.5}هماهنگ‌کننده سیستم و مسیر درخواست}{14}{subsection.3.5}%
-\contentsline {subsection}{\numberline {3.6}آداپتور و چرخه اجرای رویدادهای آکیتا}{15}{subsection.3.6}%
-\contentsline {paragraph}{ساخت گراف اجرا.}{16}{section*.4}%
-\contentsline {paragraph}{زمان‌بندی پاسخ.}{16}{section*.5}%
-\contentsline {paragraph}{کنترل جریان و پایان اجرا.}{17}{section*.6}%
-\contentsline {subsection}{\numberline {3.7}شمارنده‌ها، \lr {AMAT} و خروجی \lr {CSV}}{17}{subsection.3.7}%
-\contentsline {subsection}{\numberline {3.8}ساختار فایل‌ها و تغییرات اعمال‌شده}{17}{subsection.3.8}%
-\contentsline {section}{\numberline {4}منطق تست‌بنچ، نتایج و تحلیل کارایی}{18}{section.4}%
-\contentsline {subsection}{\numberline {4.1}روش اجرای مقایسه}{18}{subsection.4.1}%
-\contentsline {subsection}{\numberline {4.2}رد تکراری: سنجش گرم‌شدن \lr {L1} (\lr {repeated})}{19}{subsection.4.2}%
-\contentsline {subsection}{\numberline {4.3}رد ترتیبی: حرکت کلمه‌به‌کلمه (\lr {sequential})}{19}{subsection.4.3}%
-\contentsline {subsection}{\numberline {4.4}رد برخوردی: مشاهده عملی نقص برخورد (\lr {conflict})}{19}{subsection.4.4}%
-\contentsline {subsection}{\numberline {4.5}رد ترکیبی: پوشش سلسله‌مراتب و تفکیک \lr {FIFO} از \lr {LRU} (\lr {mixed})}{20}{subsection.4.5}%
-\contentsline {subsection}{\numberline {4.6}تحلیل \lr {AMAT}}{20}{subsection.4.6}%
-\contentsline {subsection}{\numberline {4.7}نتایج کمی و نمودارهای مقایسه‌ای}{22}{subsection.4.7}%
-\contentsline {subsection}{\numberline {4.8}جمع‌بندی نتایج}{24}{subsection.4.8}%
-\contentsline {section}{\numberline {آ}خروجی کامل آزمایش‌ها و نحوه اجرا}{24}{appendix.Alph1}%
-\contentsline {subsection}{\numberline {آ.1}دستورهای اجرای پروژه}{26}{subsection.Alph1.1}%
-\contentsline {subsection}{\numberline {آ.2}کنترل‌های خودکار مهم}{26}{subsection.Alph1.2}%
-\contentsline {subsection}{\numberline {آ.3}فایل‌های همراه گزارش}{27}{subsection.Alph1.3}%
+\contentsline {subsection}{\numberline {2.7}یکپارچه‌سازی با شبیه‌ساز آکیتا}{11}{subsection.2.7}%
+\contentsline {section}{\numberline {3}بخش‌های اصلی کد}{11}{section.3}%
+\contentsline {subsection}{\numberline {3.1}پیکربندی و اعتبارسنجی}{11}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}حافظه نهان مستقیم‌نگاشت سطح اول}{12}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}حافظه قربانی و سیاست‌های جایگزینی}{12}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}حافظه نهان سطح دوم}{13}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}هماهنگ‌کننده سیستم و مسیر درخواست}{13}{subsection.3.5}%
+\contentsline {subsection}{\numberline {3.6}آداپتور و چرخه اجرای رویدادهای آکیتا}{14}{subsection.3.6}%
+\contentsline {paragraph}{ساخت گراف اجرا.}{14}{section*.4}%
+\contentsline {paragraph}{زمان‌بندی پاسخ.}{15}{section*.5}%
+\contentsline {paragraph}{کنترل جریان و پایان اجرا.}{15}{section*.6}%
+\contentsline {subsection}{\numberline {3.7}شمارنده‌ها، \lr {AMAT} و خروجی \lr {CSV}}{16}{subsection.3.7}%
+\contentsline {section}{\numberline {4}منطق تست‌بنچ، نتایج و تحلیل کارایی}{16}{section.4}%
+\contentsline {subsection}{\numberline {4.1}روش اجرای مقایسه}{16}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}الگوی تکراری: سنجش گرم‌شدن \lr {L1} (\lr {repeated})}{16}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}الگوی ترتیبی: حرکت کلمه‌به‌کلمه (\lr {sequential})}{17}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}الگوی برخوردی: مشاهده عملی نقص برخورد (\lr {conflict})}{17}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}الگوی ترکیبی: ارزیابی جامع سلسله‌مراتب و تفکیک \lr {FIFO} از \lr {LRU} (\lr {mixed})}{18}{subsection.4.5}%
+\contentsline {subsection}{\numberline {4.6}تحلیل \lr {AMAT}}{18}{subsection.4.6}%
+\contentsline {subsection}{\numberline {4.7}نتایج کمّی و نمودارهای مقایسه‌ای}{19}{subsection.4.7}%
+\contentsline {subsection}{\numberline {4.8}جمع‌بندی نتایج}{22}{subsection.4.8}%
+\contentsline {section}{\numberline {آ}خروجی کامل آزمایش‌ها و نحوه اجرا}{22}{appendix.Alph1}%
+\contentsline {subsection}{\numberline {آ.1}دستورهای اجرای پروژه}{24}{subsection.Alph1.1}%
+\contentsline {subsection}{\numberline {آ.2}کنترل‌های خودکار مهم}{24}{subsection.Alph1.2}%
+\contentsline {subsection}{\numberline {آ.3}فایل‌های همراه گزارش}{25}{subsection.Alph1.3}%

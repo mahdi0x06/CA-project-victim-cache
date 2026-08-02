@@ -1,11 +1,11 @@
 # Fdb version 4
-["xdvipdfmx"] 1785657347.61837 "main.xdv" "main.pdf" "main" 1785657348.11434 0
-  "main.xdv" 1785657347.5601 419400 6af3e752e57871d8eafe54f192261ab8 "xelatex"
+["xdvipdfmx"] 1785687866.29674 "main.xdv" "main.pdf" "main" 1785687866.79395 0
+  "main.xdv" 1785687855.12045 389628 fae6b19885508a22aaf4ef2412ff4ca7 "xelatex"
   (generated)
   "main.pdf"
   (rewritten before read)
-["xelatex"] 1785657346.46831 "/Users/mparsaarani/Sharif_Github/Term4/CA_Project/CA-project-victim-cache/DOCs/REPORT/main.tex" "main.xdv" "main" 1785657348.11265 0
-  "/Users/mparsaarani/Sharif_Github/Term4/CA_Project/CA-project-victim-cache/DOCs/REPORT/main.tex" 1785657346.26338 54112 7452e9aaabc0090b41c049ec873020f3 ""
+["xelatex"] 1785687854.06343 "/Users/mparsaarani/Sharif_Github/Term4/CA_Project/CA-project-victim-cache/DOCs/REPORT/main.tex" "main.xdv" "main" 1785687866.79228 0
+  "/Users/mparsaarani/Sharif_Github/Term4/CA_Project/CA-project-victim-cache/DOCs/REPORT/main.tex" 1785687830.37805 50384 d1ce51b63393ba82fa743ab512f95d0a ""
   "/usr/local/texlive/2025/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/tfm/adobe/zapfding/pzdr.tfm" 1136768653 1528 f853c4d1b4e0550255e02831fdc8496f ""
   "/usr/local/texlive/2025/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
@@ -153,12 +153,12 @@
   "images/mixed_policy_counts.pdf" 1785656016.38144 15178 b28d37540a446243615ab553034818d0 ""
   "images/total_cycles_relative.pdf" 1785656016.38378 18313 553b8bd9bf83ffea27989b4ada95f433 ""
   "images/victim_hit_rate.pdf" 1785656016.3841 17453 2a18f51c65342bce1ce0a703f4574b0e ""
-  "main.aux" 1785657347.55828 11549 1f4744b82966cf2546d12bcf97062f1a "xelatex"
-  "main.lof" 1785657347.56003 1516 2add09890288b6c4b944de7dccb22cca "xelatex"
-  "main.lot" 1785657347.56006 594 84ffe62f9b028561c82b609a99fc1c59 "xelatex"
-  "main.out" 1785657347.55958 9016 db6dacf316d340c84d0c46e0f6f36c7b "xelatex"
-  "main.tex" 1785657346.26338 54112 7452e9aaabc0090b41c049ec873020f3 ""
-  "main.toc" 1785657347.55999 3967 c58babb8fa131a80a899dec715b9486e "xelatex"
+  "main.aux" 1785687855.11872 11857 07c97a61d68e5f3fa77c3b689e0402c9 "xelatex"
+  "main.lof" 1785687855.12038 1521 d02c2ef6c017144beb0ca950719f8485 "xelatex"
+  "main.lot" 1785687855.12041 594 f4e759b91420943a7949d8626b012275 "xelatex"
+  "main.out" 1785687855.11999 9086 8cac92b633d9ecbe56fdb3f949c2b377 "xelatex"
+  "main.tex" 1785687830.37805 50384 d1ce51b63393ba82fa743ab512f95d0a ""
+  "main.toc" 1785687855.1203 4158 6dfa4f9ff800ebafaf00c6934dd7a8ef "xelatex"
   (generated)
   "main.aux"
   "main.lof"
