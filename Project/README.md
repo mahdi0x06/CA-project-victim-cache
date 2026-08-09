@@ -27,12 +27,14 @@ benchmark requests
 
 ## Run one topology and one workload
 
-The simulator supports four deterministic traces:
+The simulator supports six deterministic traces:
 
 - `repeated`: proves L1 warm-up and L1 hits
 - `sequential`: reads consecutive 4-byte words one by one, demonstrating spatial locality inside 64-byte blocks
 - `conflict`: forces direct-mapped L1 thrashing and measures Victim Cache benefit
 - `mixed`: runs 1312 deterministic requests, exercises every hierarchy level, and creates a clear FIFO-versus-LRU Victim Cache difference
+- `matrix-multiply`: runs a real square matrix multiplication and records every operand read and result write
+- `merge-sort`: runs a real top-down merge sort and records array/scratch reads and writes
 
 Examples:
 
@@ -41,6 +43,8 @@ go run ./cmd/sim -topology l1 -trace repeated
 go run ./cmd/sim -topology l1-l2 -trace sequential -sequential-words 32 -word-size 4
 go run ./cmd/sim -topology l1-l2 -trace conflict
 go run ./cmd/sim -topology full -trace mixed -victim=true -victim-policy=FIFO
+go run ./cmd/sim -topology full -trace matrix-multiply -matrix-size 8 -victim-policy=LRU
+go run ./cmd/sim -topology full -trace merge-sort -merge-sort-length 16 -victim-policy=FIFO
 ```
 
 
@@ -88,9 +92,43 @@ go run ./cmd/testbench -verbose-checks
 
 `-strict=true` is the default. The command exits with status 1 when any validation check fails, which makes it suitable for CI.
 
+## Application test benches
+
+Two dedicated commands execute real algorithms and always compare the three
+requested cache architectures in this exact order:
+
+1. `l1-l2`
+2. `full-fifo`
+3. `full-lru`
+
+Matrix multiplication:
+
+```bash
+go run ./cmd/matrixbench
+go run ./cmd/matrixbench -size 12 -print-values -csv matrix-results.csv
+```
+
+Merge sort:
+
+```bash
+go run ./cmd/mergesortbench
+go run ./cmd/mergesortbench -length 32 -print-values -csv mergesort-results.csv
+```
+
+The default CSV names are `matrix-results.csv` and
+`mergesort-results.csv`. Each file contains one row for each of the three
+architectures and preserves the existing CSV schema.
+
+The functional memory model stores cache-block metadata rather than numeric
+payloads. Therefore each benchmark computes and verifies its numeric result in
+Go while emitting every logical read/write as a simulator-independent request.
+Akita then transports, schedules, and completes that exact memory trace through
+the selected hierarchy. See [APPLICATION_BENCHMARKS.md](APPLICATION_BENCHMARKS.md)
+for the full algorithms and address mapping.
+
 ## Compare command
 
-`cmd/compare` remains as a shorter alias for matrix reporting:
+`cmd/compare` remains as a shorter alias for summary reporting:
 
 ```bash
 go run ./cmd/compare -trace conflict

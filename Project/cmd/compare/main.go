@@ -12,11 +12,13 @@ import (
 )
 
 func main() {
-	traceFlag := flag.String("trace", string(benchmark.TraceConflict), "repeated|sequential|conflict|mixed|all")
+	traceFlag := flag.String("trace", string(benchmark.TraceConflict), "repeated|sequential|conflict|mixed|matrix-multiply|merge-sort|all")
 	blocks := flag.Int("blocks", 4, "working-set/conflicting block count")
 	repetitions := flag.Int("repetitions", 8, "trace repetitions")
 	sequentialWords := flag.Int("sequential-words", 32, "number of consecutive words in the sequential trace")
 	wordSize := flag.Uint64("word-size", 4, "word size in bytes for the sequential trace")
+	matrixSize := flag.Int("matrix-size", benchmark.DefaultMatrixDimension, "square matrix dimension")
+	mergeSortLength := flag.Int("merge-sort-length", benchmark.DefaultMergeSortLength, "merge-sort array length")
 	policy := flag.String("victim-policy", config.ReplacementFIFO, "FIFO|LRU|BOTH")
 	flag.Parse()
 
@@ -32,6 +34,8 @@ func main() {
 		SequentialWords: *sequentialWords,
 		WordSizeBytes:   *wordSize,
 		AccessSizeBytes: 8,
+		MatrixDimension: *matrixSize,
+		MergeSortLength: *mergeSortLength,
 	}
 
 	var scenarios []benchmark.Scenario

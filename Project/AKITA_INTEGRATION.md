@@ -198,6 +198,9 @@ go run ./cmd/testbench
 go run ./cmd/testbench -trace mixed
 go run ./cmd/testbench -csv results.csv
 go run ./cmd/testbench -strict=false -verbose-checks
+
+go run ./cmd/matrixbench -size 8 -csv matrix-results.csv
+go run ./cmd/mergesortbench -length 16 -csv mergesort-results.csv
 ```
 
 `cmd/sim` constructs `simadapter.Adapter` directly. `cmd/testbench` and
@@ -255,7 +258,7 @@ go test -race ./...
 go vet ./...
 ```
 
-The simadapter integration test runs all four workloads against:
+The simadapter integration test runs all six workloads against:
 
 - memory only;
 - L1 only;
@@ -263,14 +266,15 @@ The simadapter integration test runs all four workloads against:
 - full hierarchy with FIFO; and
 - full hierarchy with LRU.
 
-For all 20 combinations it compares:
+For all 30 combinations it compares:
 
 - every `model.Response`;
 - every `metrics.Stats` field; and
 - successful Akita engine completion.
 
-The CLI and CSV formats are unchanged. The integration is designed so the
-existing golden CSV files remain byte-for-byte reproducible.
+The CSV schema and all pre-existing per-trace measurements remain unchanged.
+The complete suite now appends the two requested application workloads, and
+their dedicated commands emit exactly three comparison rows each.
 
 ## Safe future extensions
 

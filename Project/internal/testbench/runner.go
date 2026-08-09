@@ -37,6 +37,16 @@ type Check struct {
 	Detail string
 }
 
+// ComparisonArchitectures returns the three cache hierarchies used by the
+// application benchmarks. The order is stable and is also the CSV row order.
+func ComparisonArchitectures() []Architecture {
+	return []Architecture{
+		{Name: "l1-l2", Topology: config.TopologyL1L2},
+		{Name: "full-fifo", Topology: config.TopologyFull, VictimEnabled: true, VictimPolicy: config.ReplacementFIFO},
+		{Name: "full-lru", Topology: config.TopologyFull, VictimEnabled: true, VictimPolicy: config.ReplacementLRU},
+	}
+}
+
 func Architectures(policy string) ([]Architecture, error) {
 	normalized := strings.ToUpper(strings.TrimSpace(policy))
 	architectures := []Architecture{

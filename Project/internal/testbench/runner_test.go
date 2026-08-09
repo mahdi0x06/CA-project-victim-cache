@@ -1,6 +1,8 @@
 package testbench
 
 import (
+	"bytes"
+	"encoding/csv"
 	"testing"
 
 	"victimcacheproject/internal/benchmark"
@@ -19,6 +21,61 @@ func testSuiteConfig(base config.Config) benchmark.SuiteConfig {
 		SequentialWords: 32,
 		WordSizeBytes:   4,
 		AccessSizeBytes: 8,
+	}
+}
+
+func TestApplicationBenchmarksUseThreeComparisonArchitecturesAndCSVRows(t *testing.T) {
+	base := config.Default()
+	suiteCfg := testSuiteConfig(base)
+	suiteCfg.MatrixDimension = 3
+	suiteCfg.MergeSortLength = 8
+	architectures := ComparisonArchitectures()
+	wantArchitectures := []string{"l1-l2", "full-fifo", "full-lru"}
+	if len(architectures) != len(wantArchitectures) {
+		t.Fatalf("architectures=%d, want %d", len(architectures), len(wantArchitectures))
+	}
+	for index, want := range wantArchitectures {
+		if architectures[index].Name != want {
+			t.Fatalf("architecture %d=%q, want %q", index, architectures[index].Name, want)
+		}
+	}
+
+	for _, kind := range []benchmark.TraceKind{benchmark.TraceMatrixMultiply, benchmark.TraceMergeSort} {
+		t.Run(string(kind), func(t *testing.T) {
+			scenario, err := benchmark.GenerateScenario(kind, suiteCfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			results, err := RunSuite(base, []benchmark.Scenario{scenario}, architectures)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(results) != 3 {
+				t.Fatalf("results=%d, want 3", len(results))
+			}
+			for _, check := range ValidateResults(results) {
+				if !check.Passed {
+					t.Fatalf("failed check %q: %s", check.Name, check.Detail)
+				}
+			}
+
+			var output bytes.Buffer
+			if err := WriteCSV(&output, results); err != nil {
+				t.Fatal(err)
+			}
+			rows, err := csv.NewReader(&output).ReadAll()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(rows) != 4 {
+				t.Fatalf("CSV rows=%d, want one header plus three data rows", len(rows))
+			}
+			for index, want := range wantArchitectures {
+				if rows[index+1][2] != want {
+					t.Fatalf("CSV architecture row %d=%q, want %q", index, rows[index+1][2], want)
+				}
+			}
+		})
 	}
 }
 

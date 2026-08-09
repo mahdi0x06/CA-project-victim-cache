@@ -11,10 +11,12 @@ import (
 type TraceKind string
 
 const (
-	TraceRepeated   TraceKind = "repeated"
-	TraceSequential TraceKind = "sequential"
-	TraceConflict   TraceKind = "conflict"
-	TraceMixed      TraceKind = "mixed"
+	TraceRepeated       TraceKind = "repeated"
+	TraceSequential     TraceKind = "sequential"
+	TraceConflict       TraceKind = "conflict"
+	TraceMixed          TraceKind = "mixed"
+	TraceMatrixMultiply TraceKind = "matrix-multiply"
+	TraceMergeSort      TraceKind = "merge-sort"
 )
 
 // SuiteConfig contains the architectural information needed to construct
@@ -31,6 +33,8 @@ type SuiteConfig struct {
 	SequentialWords int
 	WordSizeBytes   uint64
 	AccessSizeBytes uint64
+	MatrixDimension int
+	MergeSortLength int
 }
 
 // Scenario is one named workload in the complete test bench.
@@ -48,17 +52,25 @@ func AllTraceKinds() []TraceKind {
 		TraceSequential,
 		TraceConflict,
 		TraceMixed,
+		TraceMatrixMultiply,
+		TraceMergeSort,
 	}
 }
 
 func ParseTraceKind(value string) (TraceKind, error) {
 	kind := TraceKind(strings.ToLower(strings.TrimSpace(value)))
+	switch kind {
+	case "matrix", "matmul":
+		kind = TraceMatrixMultiply
+	case "mergesort":
+		kind = TraceMergeSort
+	}
 	for _, supported := range AllTraceKinds() {
 		if kind == supported {
 			return kind, nil
 		}
 	}
-	return "", fmt.Errorf("unsupported trace %q; expected repeated, sequential, conflict, mixed, or all", value)
+	return "", fmt.Errorf("unsupported trace %q; expected repeated, sequential, conflict, mixed, matrix-multiply, merge-sort, or all", value)
 }
 
 // GenerateSuite creates all workloads used by the final project evaluation.
@@ -106,6 +118,40 @@ func GenerateScenario(kind TraceKind, cfg SuiteConfig) (Scenario, error) {
 		scenario.Name = "Mixed hierarchy coverage"
 		scenario.Description = "Uses deterministic locality, Victim reuse, and a long policy-stress phase that makes FIFO and LRU diverge measurably."
 		scenario.Requests = generateMixedTrace(cfg)
+	case TraceMatrixMultiply:
+		dimension := cfg.MatrixDimension
+		if dimension == 0 {
+			dimension = DefaultMatrixDimension
+		}
+		workload, err := GenerateMatrixMultiplyWorkload(MatrixMultiplyConfig{
+			BaseAddress:          cfg.BaseAddress,
+			Dimension:            dimension,
+			ElementSizeBytes:     cfg.WordSizeBytes,
+			RegionAlignmentBytes: cfg.L1SizeBytes,
+			BlockSizeBytes:       cfg.BlockSizeBytes,
+		})
+		if err != nil {
+			return Scenario{}, err
+		}
+		scenario = workload.Scenario
+		scenario.BlockSizeBytes = cfg.BlockSizeBytes
+	case TraceMergeSort:
+		length := cfg.MergeSortLength
+		if length == 0 {
+			length = DefaultMergeSortLength
+		}
+		workload, err := GenerateMergeSortWorkload(MergeSortConfig{
+			BaseAddress:          cfg.BaseAddress,
+			Length:               length,
+			ElementSizeBytes:     cfg.WordSizeBytes,
+			RegionAlignmentBytes: cfg.L1SizeBytes,
+			BlockSizeBytes:       cfg.BlockSizeBytes,
+		})
+		if err != nil {
+			return Scenario{}, err
+		}
+		scenario = workload.Scenario
+		scenario.BlockSizeBytes = cfg.BlockSizeBytes
 	default:
 		return Scenario{}, fmt.Errorf("unsupported trace kind %q", kind)
 	}
@@ -149,6 +195,12 @@ func validateSuiteConfig(cfg SuiteConfig) error {
 	}
 	if cfg.VictimEntries < 0 {
 		return fmt.Errorf("victim entries cannot be negative")
+	}
+	if cfg.MatrixDimension < 0 {
+		return fmt.Errorf("matrix dimension cannot be negative")
+	}
+	if cfg.MergeSortLength < 0 {
+		return fmt.Errorf("merge-sort length cannot be negative")
 	}
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 
 	"victimcacheproject/internal/benchmark"
@@ -76,7 +77,6 @@ func PrintReport(w io.Writer, results []Result, checks []Check, verboseChecks bo
 
 func WriteCSV(w io.Writer, results []Result) error {
 	writer := csv.NewWriter(w)
-	defer writer.Flush()
 
 	header := []string{
 		"trace", "scenario", "architecture", "requests", "cycles", "average_cycles",
@@ -116,5 +116,20 @@ func WriteCSV(w io.Writer, results []Result) error {
 			return err
 		}
 	}
+	writer.Flush()
 	return writer.Error()
+}
+
+// WriteCSVFile writes one complete report and propagates both write and close
+// errors. It is shared by the dedicated application benchmark commands.
+func WriteCSVFile(path string, results []Result) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	if err := WriteCSV(file, results); err != nil {
+		_ = file.Close()
+		return err
+	}
+	return file.Close()
 }

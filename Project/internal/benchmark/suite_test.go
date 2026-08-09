@@ -176,3 +176,44 @@ func TestParseTraceKindRejectsUnknownValue(t *testing.T) {
 		t.Fatal("expected an error")
 	}
 }
+
+func TestApplicationTraceAliases(t *testing.T) {
+	tests := map[string]TraceKind{
+		"matrix":          TraceMatrixMultiply,
+		"matmul":          TraceMatrixMultiply,
+		"matrix-multiply": TraceMatrixMultiply,
+		"mergesort":       TraceMergeSort,
+		"merge-sort":      TraceMergeSort,
+	}
+	for input, want := range tests {
+		got, err := ParseTraceKind(input)
+		if err != nil {
+			t.Fatalf("ParseTraceKind(%q): %v", input, err)
+		}
+		if got != want {
+			t.Fatalf("ParseTraceKind(%q)=%q, want %q", input, got, want)
+		}
+	}
+}
+
+func TestGenerateApplicationScenariosUseConfiguredSizes(t *testing.T) {
+	cfg := suiteTestConfig()
+	cfg.MatrixDimension = 3
+	cfg.MergeSortLength = 7
+
+	matrix, err := GenerateScenario(TraceMatrixMultiply, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matrix.Requests) != 3*3*(2*3+1) {
+		t.Fatalf("matrix requests=%d, want 63", len(matrix.Requests))
+	}
+
+	mergeSort, err := GenerateScenario(TraceMergeSort, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(mergeSort.Requests) == 0 {
+		t.Fatal("merge-sort scenario must contain memory requests")
+	}
+}

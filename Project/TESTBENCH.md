@@ -2,7 +2,7 @@
 
 The final test bench separates **correctness coverage** from the project's
 **Victim Cache performance comparison**. A single conflict-only trace cannot
-validate every cache level, so the suite uses four deterministic workloads.
+validate every cache level, so the suite uses six deterministic workloads.
 
 ## Workloads
 
@@ -84,6 +84,62 @@ Therefore LRU produces **128 more Victim hits**, removes **128 L2 reads**, and
 saves **1536 cycles** relative to FIFO. These exact counts and the three policy
 comparisons are asserted automatically.
 
+### 5. `matrix-multiply`
+
+The default benchmark multiplies two deterministic `8x8` row-major matrices
+with the conventional `i-j-k` algorithm. Every inner-loop iteration emits one
+read from `A` and one read from `B`; after the dot product completes, one write
+to `C` is emitted. The exact default request count is:
+
+```text
+8 * 8 * (2 * 8 + 1) = 1088 requests
+```
+
+`A`, `B`, and `C` occupy disjoint regions separated by an L1-sized aligned
+stride. Matching offsets therefore map to the same direct-mapped L1 index,
+which gives the Victim Cache meaningful conflict traffic without changing the
+matrix algorithm.
+
+### 6. `merge-sort`
+
+The default benchmark sorts a deterministic descending array of 16 elements
+with stable, recursive top-down merge sort. It emits memory operations for:
+
+- reading both comparison candidates;
+- writing the selected value to the scratch array;
+- reading remaining values when one half is exhausted;
+- reading the scratch array; and
+- writing sorted values back to the main array.
+
+The source and scratch arrays are separated by an L1-sized aligned stride, so
+corresponding offsets exercise direct-mapped conflict behavior. The default
+input produces 288 memory requests.
+
+Both algorithms compute real values in Go and expose their verified result.
+The cache model intentionally stores block metadata rather than numeric data,
+so the resulting read/write trace—not CPU instructions—is what Akita executes.
+This is consistent with all existing deterministic project workloads.
+
+## Dedicated application commands
+
+The application commands always run exactly these architectures:
+
+```text
+l1-l2
+full-fifo
+full-lru
+```
+
+Run them and write their three-row CSV reports with:
+
+```bash
+go run ./cmd/matrixbench -size 8 -csv matrix-results.csv
+go run ./cmd/mergesortbench -length 16 -csv mergesort-results.csv
+```
+
+Both workloads are also available to the generic commands as
+`matrix-multiply` and `merge-sort`.
+
 ## Architectures
 
 Each workload runs on:
@@ -114,7 +170,7 @@ driver sends accessRequestMsg
   -> driver records the response and issues the next request
 ```
 
-Only one request is outstanding. This makes all 20 matrix runs deterministic
+Only one request is outstanding. This makes all 30 complete-suite runs deterministic
 and preserves the cache-state order, counters, cycle totals, report formatting,
 and CSV schema established before the Akita integration. The cache levels are
 functional objects inside `System.Access`, not independent Akita components;
@@ -135,8 +191,11 @@ The test bench checks:
 - exact default sequential result: 30 L1 hits and 2 L1 misses
 - conflict-trace Victim Cache benefit
 - mixed-trace coverage of every level
+- matrix product correctness and exact read/write construction
+- merge-sort output correctness and read/write construction
+- exactly three application-benchmark CSV rows in `l1-l2`, `full-fifo`, `full-lru` order
 
-In addition, `internal/simadapter/adapter_test.go` executes all four workloads
+In addition, `internal/simadapter/adapter_test.go` executes all six workloads
 on all five architectures through Akita and compares every response and every
 statistics field with the synchronous `System.Run` correctness oracle.
 

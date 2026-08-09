@@ -30,6 +30,11 @@ for request transport and event scheduling.
 - `adapter_test.go`: compares the Akita path with `System.Run` for every
   workload/topology combination.
 
+The complete suite includes repeated, sequential, conflict, mixed, matrix
+multiplication, and merge sort. The application generators compute real
+numeric values while recording each logical read/write; this adapter executes
+those requests through the same Akita path as every other workload.
+
 ## Request lifecycle
 
 1. `requestDriver.Start` schedules `startDriverEvent` at time zero.
