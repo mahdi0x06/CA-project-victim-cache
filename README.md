@@ -25,6 +25,18 @@ benchmark requests
   -> MemoryRequestDriver responses and project reports
 ```
 
+## Setup
+
+Run the Go commands below from the `Project/` module directory:
+
+```bash
+git clone https://github.com/mahdi0x06/CA-project-victim-cache.git
+cd CA-project-victim-cache/Project
+go mod download
+```
+
+The required Go version is declared in `Project/go.mod`.
+
 ## Run one topology and one workload
 
 The simulator supports six deterministic traces:
@@ -123,7 +135,7 @@ The functional memory model stores cache-block metadata rather than numeric
 payloads. Therefore each benchmark computes and verifies its numeric result in
 Go while emitting every logical read/write as a simulator-independent request.
 Akita then transports, schedules, and completes that exact memory trace through
-the selected hierarchy. See [APPLICATION_BENCHMARKS.md](APPLICATION_BENCHMARKS.md)
+the selected hierarchy. See [APPLICATION_BENCHMARKS.md](Project/APPLICATION_BENCHMARKS.md)
 for the full algorithms and address mapping.
 
 ## Compare command
@@ -169,5 +181,6 @@ At 1 GHz the executor converts `Response.LatencyCycles` to Akita time with
 cache-service latencies and intentionally excludes internal connection ticks,
 preserving all previous CLI and CSV results.
 
-See [AKITA_INTEGRATION.md](AKITA_INTEGRATION.md) for the complete component,
+See [AKITA_INTEGRATION.md](Project/AKITA_INTEGRATION.md) for the complete component,
 message, timing, execution, and compatibility design.
+
